@@ -1,0 +1,83 @@
+Version: "2012-10-17"
+Statement:
+  - Sid: DenyChangesToProtectedRoles
+    Effect: Deny
+    NotAction:
+      - iam:Get*
+      - iam:List*
+      - iam:GenerateServiceLastAccessedDetails
+      - iam:SimulatePrincipalPolicy
+    Resource:
+      - arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+      - arn:aws:iam::*:role/OrganizationAccountAccessRole
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetAdministrationRole
+  - Sid: DenyChangesToAccountBaselineStack
+    Effect: Deny
+    NotAction:
+      - cloudformation:Describe*
+      - cloudformation:Detect*
+      - cloudformation:Get*
+      - cloudformation:List*
+    Resource:
+      - arn:aws:cloudformation:*:*:stack/StackSet-account-baseline-*/*
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+  - Sid: DenyChangesToAccountBaselineRoles
+    Effect: Deny
+    NotAction:
+      - iam:Get*
+      - iam:List*
+      - iam:GenerateServiceLastAccessedDetails
+      - iam:SimulatePrincipalPolicy
+      - sts:AssumeRole
+    Resource:
+      - arn:aws:iam::*:role/Admin
+      - arn:aws:iam::*:role/Staff
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+  - Sid: DenyAccountActions
+    Effect: Deny
+    Action:
+      - account:DisableRegion
+      - account:EnableRegion
+    Resource: "*"
+    Condition:
+      StringNotLike:
+        aws:PrincipalArn: arn:aws:iam::*:role/Admin
+  - Sid: DenyBillingActions
+    Effect: Deny
+    Action:
+      - aws-portal:ModifyAccount
+      - aws-portal:ModifyBilling
+      - aws-portal:ModifyPaymentMethods
+      - aws-portal:ViewAccount
+      - aws-portal:ViewPaymentMethods
+    Resource: "*"
+    Condition:
+      StringNotLike:
+        aws:PrincipalArn: arn:aws:iam::*:role/Admin
+  - Sid: DenyOrganizationsActions
+    Effect: Deny
+    Action:
+      - organizations:AcceptHandshake
+      - organizations:AttachPolicy
+      - organizations:CancelHandshake
+      - organizations:Create*
+      - organizations:DeclineHandshake
+      - organizations:Delete*
+      - organizations:DetachPolicy
+      - organizations:Disable*
+      - organizations:Enable*
+      - organizations:InviteAccountToOrganization
+      - organizations:LeaveOrganization
+      - organizations:MoveAccount
+      - organizations:RemoveAccountFromOrganization
+      - organizations:Update*
+    Resource: "*"
+    Condition:
+      StringNotLike:
+        aws:PrincipalArn: arn:aws:iam::*:role/Admin
