@@ -15,6 +15,10 @@ aws cloudformation create-stack \
   --template-body file://stack-set-admin-role.yml \
   --capabilities CAPABILITY_NAMED_IAM
 
+aws cloudformation create-stack \
+  --stack-name cloudtrail-bucket \
+  --template-body file://cloudtrail-bucket.yml
+
 aws cloudformation create-stack-set \
   --stack-set-name account-baseline \
   --template-body file://account-baseline.yml \
@@ -33,6 +37,10 @@ aws cloudformation update-stack \
   --stack-name stack-set-admin-role \
   --template-body file://stack-set-admin-role.yml \
   --capabilities CAPABILITY_NAMED_IAM
+
+aws cloudformation update-stack \
+  --stack-name cloudtrail-bucket \
+  --template-body file://cloudtrail-bucket.yml
 
 aws cloudformation update-stack-set \
   --stack-set-name account-baseline \
