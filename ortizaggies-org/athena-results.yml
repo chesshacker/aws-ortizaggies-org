@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: S3 bucket to store Athena query results
+Parameters:
+  BucketName:
+    Description: The name of the bucket
+    Type: String
+    Default: ortizaggies-org-athena-results
+Resources:
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteContentAfter1Week
+            Status: Enabled
+            ExpirationInDays: 7
