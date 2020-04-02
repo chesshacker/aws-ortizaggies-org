@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Hosted Zones for public DNS
+Resources:
+  ChesshackerDotComHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: chesshacker.com.
+  ### Waiting for CloudWatch Logs Resource Policy support...
+  ### see: https://github.com/aws-cloudformation/aws-cloudformation-coverage-roadmap/issues/359
+  #     QueryLoggingConfig:
+  #       CloudWatchLogsLogGroupArn: !GetAtt ChesshackerDotComLogGroup.Arn
+  # ChesshackerDotComLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: aws/route53/chesshacker.com
+  #     RetentionInDays: 14
+  ChesshackerDotComRecordSetGroup:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref ChesshackerDotComHostedZone
+      RecordSets:
+        - Name: chesshacker.com.
+          ResourceRecords:
+            - "\"google-site-verification=5dzAzkBcZfJaHAdmAhwECMIHblgfJeorkkS8f2uaFlY\""
+          TTL: "300"
+          Type: TXT
+        - Name: blog.chesshacker.com.
+          ResourceRecords:
+            - chesshacker.netlify.com.
+          TTL: "300"
+          Type: CNAME
