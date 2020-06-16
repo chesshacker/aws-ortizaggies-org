@@ -33,17 +33,3 @@ else
   aws iam create-account-alias --account-alias ${ACCOUNT_NAME}
   echo "Created account alias ${ACCOUNT_NAME}"
 fi
-
-ROLE=$(aws iam list-roles | jq -r '.Roles[]|select(.RoleName=="AWSCloudFormationStackSetExecutionRole")|.RoleName')
-if [ "$ROLE" == "AWSCloudFormationStackSetExecutionRole" ]; then
-  echo "AWSCloudFormationStackSetExecutionRole already exists"
-else
-  aws iam create-role \
-    --role-name AWSCloudFormationStackSetExecutionRole \
-    --assume-role-policy-document file://resources/AWSCloudFormationStackSetExecution-Trust.json
-  aws iam put-role-policy \
-    --role-name AWSCloudFormationStackSetExecutionRole \
-    --policy-name AWSCloudFormationStackSetExecutionPolicy \
-    --policy-document file://resources/AWSCloudFormationStackSetExecution-Policy.json
-  echo "Created AWSCloudFormationStackSetExecutionRole"
-fi

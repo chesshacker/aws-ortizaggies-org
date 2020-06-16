@@ -16,7 +16,7 @@ ACCOUNT_ID=$2
 echo "Initialize account: ${ACCOUNT_NAME}..."
 are_you_sure
 
-./create-alias-and-execution-role.sh ${ACCOUNT_NAME} ${ACCOUNT_ID}
+./create-alias.sh ${ACCOUNT_NAME} ${ACCOUNT_ID}
 
 # Give it a minute or create-stack-instances will fail
 echo "Sleeping 60 seconds"

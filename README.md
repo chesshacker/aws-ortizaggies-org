@@ -1,12 +1,12 @@
 # AWS Organization for OrtizAggies
 
 Starting from just a master payer account, run `add-account.sh` to create an
-org/admin account. Then create the things in ortizaggies-org. Then run
-`init-account.sh` on both the master-payer and the org/admin account. Create
-a user, and add this user to the Everyone group and the Admin group.
+org/admin account. Then create the things in both ortizaggies-master and
+ortizaggies-org. Then run `init-account.sh` on both the master-payer and the
+org/admin account. Create a user, and add this user to the Everyone group and
+the Admin group.
 
-To generate an aws config file, run generate-aws-config using an Admin user. No
-need to assume any particular role first.
+To generate an aws config file, run generate-aws-config using an Admin user.
 
 To verify all aws profiles are good to go, first login with the `aws-login.sh`
 script and you MFA. Then try out all the profiles with vault and aws cli.

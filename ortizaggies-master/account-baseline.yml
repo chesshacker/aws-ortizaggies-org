@@ -15,18 +15,3 @@ Resources:
               BoolIfExists:
                 aws:MultiFactorAuthPresent: "true"
       ManagedPolicyArns: ["arn:aws:iam::aws:policy/AdministratorAccess"]
-  StaffRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: Staff
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: "092251750008" # ortizaggies-org
-            Action: ["sts:AssumeRole"]
-            Condition:
-              BoolIfExists:
-                aws:MultiFactorAuthPresent: "true"
-      ManagedPolicyArns: ["arn:aws:iam::aws:policy/AdministratorAccess"]

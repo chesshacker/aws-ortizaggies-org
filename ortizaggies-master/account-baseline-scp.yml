@@ -8,11 +8,12 @@ Statement:
       - iam:GenerateServiceLastAccessedDetails
       - iam:SimulatePrincipalPolicy
     Resource:
-      - arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+      - arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
+      - arn:aws:iam::*:role/aws-service-role/member.org.stacksets.cloudformation.amazonaws.com/AWSServiceRoleForCloudFormationStackSetsOrgMember
       - arn:aws:iam::*:role/OrganizationAccountAccessRole
-    Condition:
-      StringNotLike:
-        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetAdministrationRole
+    # Condition:
+    #   StringNotLike:
+    #     aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetAdministrationRole
   - Sid: DenyChangesToAccountBaselineStack
     Effect: Deny
     NotAction:
@@ -24,7 +25,7 @@ Statement:
       - arn:aws:cloudformation:*:*:stack/StackSet-account-baseline-*/*
     Condition:
       StringNotLike:
-        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+        aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
   - Sid: DenyChangesToAccountBaselineRoles
     Effect: Deny
     NotAction:
@@ -35,10 +36,9 @@ Statement:
       - sts:AssumeRole
     Resource:
       - arn:aws:iam::*:role/Admin
-      - arn:aws:iam::*:role/Staff
     Condition:
       StringNotLike:
-        aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole
+        aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
   - Sid: DenyAccountActions
     Effect: Deny
     Action:
@@ -52,7 +52,7 @@ Statement:
     Effect: Deny
     Action:
       - aws-portal:ModifyAccount
-      - aws-portal:ModifyBilling
+      # aws-portal:ModifyBilling is okay because it only allows managing budgets and credits in an organization
       - aws-portal:ModifyPaymentMethods
       - aws-portal:ViewAccount
       - aws-portal:ViewPaymentMethods
