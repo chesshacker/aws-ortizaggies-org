@@ -17,9 +17,3 @@ echo "Initialize account: ${ACCOUNT_NAME}..."
 are_you_sure
 
 ./create-alias.sh ${ACCOUNT_NAME} ${ACCOUNT_ID}
-
-# Give it a minute or create-stack-instances will fail
-echo "Sleeping 60 seconds"
-sleep 60
-
-./add-to-stackset.sh ${ACCOUNT_ID}

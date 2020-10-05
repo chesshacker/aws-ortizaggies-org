@@ -26,7 +26,6 @@ while
 				[profile ${accountName}-${roleLower}]
 				region=us-east-1
 				source_profile=default
-				parent_profile=default
 				role_arn=arn:aws:iam::${accountId}:role/${role}
 				EOF
 		done

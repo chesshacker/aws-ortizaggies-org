@@ -20,6 +20,7 @@ if [ "${ACCOUNT_ID}" != "${MASTER_ACCOUNT}" ]; then
   AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r .Credentials.AccessKeyId)
   AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r .Credentials.SecretAccessKey)
   AWS_SESSION_TOKEN=$(echo $CREDS | jq -r .Credentials.SessionToken)
+  unset AWS_SECURITY_TOKEN
 fi
 
 ALIAS=$(aws iam list-account-aliases | jq -c -r '.AccountAliases[0]')
