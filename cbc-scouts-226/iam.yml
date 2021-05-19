@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Groups, and policies for scouts
+Parameters:
+  WebsiteBucketName:
+    Description: The name of the bucket to store the scout website
+    Type: String
+    Default: cbc-scouts-226
+
+Resources:
+  WebmasterGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: Webmaster
+      ManagedPolicyArns:
+        - !Ref SelfManageCredentialsManagedPolicy
+      Policies:
+        - PolicyName: AllowS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - s3:GetBucketLocation
+                - s3:ListAllMyBuckets
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                - s3:ListBucket
+                Resource:
+                - !Sub "arn:aws:s3:::${WebsiteBucketName}"
+              - Effect: Allow
+                Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+                Resource:
+                - !Sub "arn:aws:s3:::${WebsiteBucketName}/*"
+
+  SelfManageCredentialsManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: SelfManageCredentials
+      Description: User can manage their own credentials
+      # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_aws_my-sec-creds-self-manage.html
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowViewAccountInfo
+            Effect: Allow
+            Action:
+              - iam:GetAccountPasswordPolicy
+              - iam:GetAccountSummary
+              - iam:ListVirtualMFADevices
+            Resource: "*"
+          - Sid: AllowManageOwnPasswords
+            Effect: Allow
+            Action:
+              - iam:ChangePassword
+              - iam:GetUser
+            Resource: arn:aws:iam::*:user/${aws:username}
+          - Sid: AllowManageOwnAccessKeys
+            Effect: Allow
+            Action:
+              - iam:CreateAccessKey
+              - iam:DeleteAccessKey
+              - iam:GetAccessKeyLastUsed
+              - iam:ListAccessKeys
+              - iam:UpdateAccessKey
+            Resource: arn:aws:iam::*:user/${aws:username}
+          - Sid: AllowManageOwnSigningCertificates
+            Effect: Allow
+            Action:
+              - iam:DeleteSigningCertificate
+              - iam:ListSigningCertificates
+              - iam:UpdateSigningCertificate
+              - iam:UploadSigningCertificate
+            Resource: arn:aws:iam::*:user/${aws:username}
+          - Sid: AllowManageOwnSSHPublicKeys
+            Effect: Allow
+            Action:
+              - iam:DeleteSSHPublicKey
+              - iam:GetSSHPublicKey
+              - iam:ListSSHPublicKeys
+              - iam:UpdateSSHPublicKey
+              - iam:UploadSSHPublicKey
+            Resource: arn:aws:iam::*:user/${aws:username}
+          - Sid: AllowManageOwnGitCredentials
+            Effect: Allow
+            Action:
+              - iam:CreateServiceSpecificCredential
+              - iam:DeleteServiceSpecificCredential
+              - iam:ListServiceSpecificCredentials
+              - iam:ResetServiceSpecificCredential
+              - iam:UpdateServiceSpecificCredential
+            Resource: arn:aws:iam::*:user/${aws:username}
+          - Sid: AllowManageMFA
+            Effect: Allow
+            Action:
+              - iam:CreateVirtualMFADevice
+              - iam:DeleteVirtualMFADevice
+              - iam:DeactivateMFADevice
+              - iam:EnableMFADevice
+              - iam:ListMFADevices
+              - iam:ResyncMFADevice
+            Resource: arn:aws:iam::*:user/${aws:username}

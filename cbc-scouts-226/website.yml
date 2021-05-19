@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: S3 bucket to store the scout website
+Parameters:
+  WebsiteBucketName:
+    Description: The name of the bucket to store the scout website
+    Type: String
+    Default: cbc-scouts-226
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref WebsiteBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+        - Sid: PublicReadGetObject
+          Effect: Allow
+          Principal: "*"
+          Action:
+          - s3:GetObject
+          Resource:
+          - !Sub "arn:aws:s3:::${WebsiteBucketName}/*"
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt
+      - WebsiteBucket
+      - DomainName
+    Description: HTTPS base URL for objects
