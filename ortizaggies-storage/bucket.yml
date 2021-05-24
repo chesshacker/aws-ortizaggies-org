@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: S3 bucket to store files and group for user with read/write
+Parameters:
+  BucketName:
+    Description: The name of the bucket
+    Type: String
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  OwnerGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub "bucket-owner-${BucketName}"
+      Policies:
+        - PolicyName: AllowS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - s3:GetBucketLocation
+                - s3:ListAllMyBuckets
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                - s3:ListBucket
+                Resource:
+                - !Sub "arn:aws:s3:::${BucketName}"
+              - Effect: Allow
+                Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+                Resource:
+                - !Sub "arn:aws:s3:::${BucketName}/*"
