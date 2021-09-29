@@ -11,9 +11,6 @@ Statement:
       - arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
       - arn:aws:iam::*:role/aws-service-role/member.org.stacksets.cloudformation.amazonaws.com/AWSServiceRoleForCloudFormationStackSetsOrgMember
       - arn:aws:iam::*:role/OrganizationAccountAccessRole
-    # Condition:
-    #   StringNotLike:
-    #     aws:PrincipalARN: arn:aws:iam::*:role/AWSCloudFormationStackSetAdministrationRole
   - Sid: DenyChangesToAccountBaselineStack
     Effect: Deny
     NotAction:
@@ -34,8 +31,27 @@ Statement:
       - iam:GenerateServiceLastAccessedDetails
       - iam:SimulatePrincipalPolicy
       - sts:AssumeRole
+      - iam:PassRole # This is okay for service roles, but note user roles
     Resource:
       - arn:aws:iam::*:role/Admin
+      - arn:aws:iam::*:role/AccessAnalyzerMonitorServiceRole
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
+  - Sid: DenyPassingUserRoles
+    Effect: Deny
+    Action:
+      - iam:PassRole
+    Resource:
+      - arn:aws:iam::*:role/Admin
+  - Sid: DenyChangesToAccountBaselinePolicies
+    Effect: Deny
+    NotAction:
+      - iam:Get*
+      - iam:List*
+      - iam:GenerateServiceLastAccessedDetails
+    Resource:
+      - arn:aws:iam::*:policy/AccessAnalyzerMonitorServicePolicy
     Condition:
       StringNotLike:
         aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32

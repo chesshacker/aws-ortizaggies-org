@@ -5,6 +5,10 @@ Parameters:
     Description: The name of the bucket to store CloudTrail
     Type: String
     Default: ortizaggies-org-cloudtrail
+  OrgID:
+    Description: Organization ID
+    Type: String
+    Default: o-jubqj38nma
 Resources:
   CloudTrailBucket:
     Type: AWS::S3::Bucket
@@ -12,25 +16,30 @@ Resources:
     Properties:
       AccessControl: Private
       BucketName: !Ref BucketName
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteContentAfter1Year
+          - Id: DeleteContentAfter30Days
             Status: Enabled
-            ExpirationInDays: 365
-            Transitions:
-              - StorageClass: STANDARD_IA
-                TransitionInDays: 31
+            ExpirationInDays: 30
   CloudTrailBucketPolicy:
     Type: AWS::S3::BucketPolicy
     DeletionPolicy: Retain
     Properties:
       Bucket: !Ref CloudTrailBucket
       PolicyDocument:
+        Version: "2012-10-17"
         Statement:
           - Sid: AWSCloudTrailAclCheck
             Effect: Allow
@@ -57,3 +66,36 @@ Resources:
               - s3:Get*
               - s3:List*
             Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+          - Sid: CrossAccountListBucket
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}"
+            Condition:
+              StringEquals:
+                "aws:PrincipalOrgID":
+                  - !Ref OrgID
+              StringLikeIfExists:
+                "s3:prefix": !Sub "AWSLogs/${OrgID}/${!aws:PrincipalAccount}/*"
+              ArnLike:
+                "aws:PrincipalArn":
+                  - arn:aws:iam::*:role/Admin
+                  - arn:aws:iam::*:role/AccessAnalyzerMonitorServiceRole
+          - Sid: CrossAccountGetObject
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/AWSLogs/${OrgID}/${!aws:PrincipalAccount}/*"
+            Condition:
+              StringEquals:
+                "aws:PrincipalOrgID":
+                  - !Ref OrgID
+              ArnLike:
+                "aws:PrincipalArn":
+                  - arn:aws:iam::*:role/Admin
+                  - arn:aws:iam::*:role/AccessAnalyzerMonitorServiceRole

@@ -1,4 +1,11 @@
 # Note: Remember to update the account baseline SCP when making changes here
+AWSTemplateFormatVersion: 2010-09-09
+Description: Account Baseline StackSet is applied accross all accounts
+Parameters:
+  CloudTrailBucket:
+    Type: String
+    Description: Name of the bucket used by the organization CloudTrail
+    Default: ortizaggies-org-cloudtrail
 Resources:
   AdminRole:
     Type: AWS::IAM::Role
@@ -15,3 +22,39 @@ Resources:
               BoolIfExists:
                 aws:MultiFactorAuthPresent: "true"
       ManagedPolicyArns: ["arn:aws:iam::aws:policy/AdministratorAccess"]
+  AccessAnalyzerMonitorServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AccessAnalyzerMonitorServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: access-analyzer.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Ref AccessAnalyzerMonitorServicePolicy
+  AccessAnalyzerMonitorServicePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Allows access to the Organization CloudTrail
+      ManagedPolicyName: AccessAnalyzerMonitorServicePolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "cloudtrail:GetTrail"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "iam:GenerateServiceLastAccessedDetails"
+              - "iam:GetServiceLastAccessedDetails"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+            Resource:
+              - !Sub "arn:aws:s3:::${CloudTrailBucket}"
+              - !Sub "arn:aws:s3:::${CloudTrailBucket}/*"
