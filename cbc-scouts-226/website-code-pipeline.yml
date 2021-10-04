@@ -1,0 +1,284 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFront and other related resources for scouts226.com
+Parameters:
+  NamePrefix:
+    Type: String
+    Description: Prefix bucket names and such
+    Default: scouts-226
+  WebsiteBucket:
+    Type: String
+    Description: s3 bucket for the default origin for scouts226.com
+    Default: scouts-226-default-origin
+Resources:
+  MainCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${NamePrefix}-main"
+      ArtifactStore:
+        Location: !Ref ArtifactStore
+        Type: S3
+      RestartExecutionOnUpdate: true
+      RoleArn: !GetAtt MainCodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !GetAtt CodeStarConnection.ConnectionArn
+                FullRepositoryId: scouts226/scouts226.com
+                BranchName: main
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: true
+              OutputArtifacts:
+                - Name: Source
+        - Name: Build
+          Actions:
+            - Name: CodeBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref MainCodeBuildProject
+              InputArtifacts:
+                - Name: Source
+              OutputArtifacts:
+                - Name: Website
+        # TODO: create a custom action to sync the s3 bucket instead of calling `aws s3 sync` in CodeBuild
+
+  MainCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${NamePrefix}-main-codebuild"
+      Description: !Sub "Main CodeBuild Project for ${NamePrefix}"
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Type: S3
+        Location: !Ref CodeBuildCache
+      ConcurrentBuildLimit: 1
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref MainCodeBuildLogGroup
+          Status: ENABLED
+      QueuedTimeoutInMinutes: 480
+      TimeoutInMinutes: 10
+      ResourceAccessRole: !GetAtt MainCodeBuildRole.Arn # allows access to artifacts and cloudwatch logs
+      ServiceRole: !GetAtt MainCodeBuildRole.Arn # allows interactions with services during build
+      Source:
+        # https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
+        Type: CODEPIPELINE
+        BuildSpec: !Sub |
+          version: 0.2
+          env:
+            variables:
+              JEKYLL_ENV: production
+              BUNDLER_VERSION: "2.2.27"
+              GEM_HOME: /root/.gem
+              GEM_PATH: /root/.gem
+              BUNDLE: /root/.gem/bin/bundle
+          phases:
+            install:
+              on-failure: ABORT
+              runtime-versions:
+                ruby: "2.7"
+            pre_build:
+              on-failure: ABORT
+              commands:
+                - mkdir -p /root/.gem vendor/cache
+                - gem install --no-document --conservative bundler -v $BUNDLER_VERSION
+                - $BUNDLE install
+                - $BUNDLE clean --force
+                - $BUNDLE package
+            build:
+              commands:
+                - bundle exec jekyll build --verbose
+                - (cd _site && aws s3 sync . s3://${WebsiteBucket}/content --delete --size-only --cache-control max-age=86400,public)
+          artifacts:
+            files:
+              - "**/*"
+            base-directory: "./_site/"
+          cache:
+            paths:
+              - "/root/.gem/**/*"
+              - "vendor/cache/**/*"
+
+  ArtifactStore:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub "${NamePrefix}-main-codepipeline-artifact-store"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteContentAfter30Days
+            Status: Enabled
+            ExpirationInDays: 30
+
+  CodeBuildCache:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub "${NamePrefix}-main-codebuild-cache"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteContentAfter90Days
+            Status: Enabled
+            ExpirationInDays: 90
+
+  MainCodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${NamePrefix}-main-codepipeline-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: !Sub "Main CodePipeline Role for ${NamePrefix}"
+      MaxSessionDuration: 3600
+      Policies:
+        - PolicyName: CodePipelinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowKMS
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "kms:ResourceAliases": "aws/s3"
+              - Sid: AllowS3
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub "${ArtifactStore.Arn}/*"
+              - Sid: AllowCodeStar
+                Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                Resource: !Ref CodeStarConnection
+              - Sid: AllowCodeBuild
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt MainCodeBuildProject.Arn
+
+  MainCodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${NamePrefix}-main-codebuild-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: !Sub "Main CodeBuild Role for ${NamePrefix}"
+      MaxSessionDuration: 3600
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowKMS
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "kms:ResourceAliases": "aws/s3"
+              - Sid: AllowS3ArtifactStore
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub "${ArtifactStore.Arn}/*"
+              - Sid: AllowS3CacheBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${CodeBuildCache}"
+              - Sid: AllowS3CacheObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${CodeBuildCache}/*"
+              - Sid: AllowCloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt MainCodeBuildLogGroup.Arn
+              - Sid: AllowS3SyncToWebsiteBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${WebsiteBucket}"
+                Condition:
+                  StringLike:
+                    "s3:prefix": content/*
+              - Sid: AllowS3SyncToWebsiteObjects
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/content/*"
+
+  CodeStarConnection:
+    Type: AWS::CodeStarConnections::Connection
+    DeletionPolicy: Retain
+    Properties:
+      ConnectionName: Scouts226-GitHub
+      ProviderType: GitHub
+
+  MainCodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/codebuild/${NamePrefix}-main"
+      RetentionInDays: 30

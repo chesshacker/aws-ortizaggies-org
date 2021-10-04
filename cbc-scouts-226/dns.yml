@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Hosted Zones for public DNS
+Parameters:
+  DomainName:
+    Description: Domain name
+    Type: String
+    Default: scouts226.com
+Resources:
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    DeletionPolicy: Retain
+    Properties:
+      Name: !Sub "${DomainName}."
+      QueryLoggingConfig:
+        CloudWatchLogsLogGroupArn: !GetAtt LogGroup.Arn
+    DependsOn:
+      - LogGroupResourcePolicy
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/route53/${DomainName}"
+      RetentionInDays: 7
+  LogGroupResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    DeletionPolicy: Retain
+    Properties:
+      PolicyName: AllowRoute53
+      PolicyDocument: !Sub "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"route53.amazonaws.com\"]},\"Action\":\"logs:PutLogEvents\",\"Resource\":\"${LogGroup.Arn}\"},{\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"route53.amazonaws.com\"]},\"Action\":\"logs:CreateLogStream\",\"Resource\":\"${LogGroup.Arn}\"}]}"
+Outputs:
+  HostedZoneId:
+    Value: !GetAtt
+      - HostedZone
+      - Id
+    Description: Hosted Zone ID
+  DomainName:
+    Value: !Ref DomainName
+    Description: Domain name

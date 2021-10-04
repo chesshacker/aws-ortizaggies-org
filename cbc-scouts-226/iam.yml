@@ -1,10 +1,10 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
 Description: Groups, and policies for scouts
 Parameters:
-  WebsiteBucketName:
-    Description: The name of the bucket to store the scout website
+  ImageBucketName:
+    Description: The name of the bucket to store the scout website images
     Type: String
-    Default: cbc-scouts-226
+    Default: scouts-226-images-origin
 
 Resources:
   WebmasterGroup:
@@ -13,6 +13,7 @@ Resources:
       GroupName: Webmaster
       ManagedPolicyArns:
         - !Ref SelfManageCredentialsManagedPolicy
+        - "arn:aws:iam::aws:policy/job-function/ViewOnlyAccess"
       Policies:
         - PolicyName: AllowS3Access
           PolicyDocument:
@@ -27,7 +28,7 @@ Resources:
                 Action:
                 - s3:ListBucket
                 Resource:
-                - !Sub "arn:aws:s3:::${WebsiteBucketName}"
+                - !Sub "arn:aws:s3:::${ImageBucketName}"
               - Effect: Allow
                 Action:
                 - s3:PutObject
@@ -35,7 +36,7 @@ Resources:
                 - s3:DeleteObject
                 - s3:GetObjectAcl
                 Resource:
-                - !Sub "arn:aws:s3:::${WebsiteBucketName}/*"
+                - !Sub "arn:aws:s3:::${ImageBucketName}/*"
 
   SelfManageCredentialsManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
