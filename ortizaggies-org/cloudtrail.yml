@@ -1,73 +1,24 @@
-# Note: Remember to update the account baseline SCP when making changes here
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Account Baseline StackSet is applied accross all accounts
+Description: S3 bucket to store organization CloudTrail
 Parameters:
-  CloudTrailBucket:
+  BucketName:
+    Description: The name of the bucket to store CloudTrail
     Type: String
-    Description: Name of the bucket used by the organization CloudTrail
     Default: ortizaggies-org-cloudtrail
   OrgID:
     Description: Organization ID
     Type: String
     Default: o-jubqj38nma
 Resources:
-  AdminRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: Admin
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: "092251750008" # ortizaggies-org
-            Action: ["sts:AssumeRole"]
-            Condition:
-              BoolIfExists:
-                aws:MultiFactorAuthPresent: "true"
-      ManagedPolicyArns: ["arn:aws:iam::aws:policy/AdministratorAccess"]
-  AccessAnalyzerMonitorServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: AccessAnalyzerMonitorServiceRole
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: access-analyzer.amazonaws.com
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - !Ref AccessAnalyzerMonitorServicePolicy
-  AccessAnalyzerMonitorServicePolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Allows access to the Organization CloudTrail
-      ManagedPolicyName: AccessAnalyzerMonitorServicePolicy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: "cloudtrail:GetTrail"
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - "iam:GenerateServiceLastAccessedDetails"
-              - "iam:GetServiceLastAccessedDetails"
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - "s3:GetObject"
-              - "s3:ListBucket"
-            Resource:
-              - !Sub "arn:aws:s3:::${CloudTrailBucket}"
-              - !Sub "arn:aws:s3:::${CloudTrailBucket}/*"
-  UtilityBucket:
+  CloudTrailBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
     Properties:
       AccessControl: Private
-      BucketName: !Sub "utility-bucket-${AWS::Region}-${AWS::AccountId}"
+      BucketName: !Ref BucketName
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -79,29 +30,95 @@ Resources:
               SSEAlgorithm: AES256
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteContentAfter7Days
+          - Id: DeleteContentAfter30Days
             Status: Enabled
-            ExpirationInDays: 7
-
-  AccountBaselineGlueDatabase:
+            ExpirationInDays: 30
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub "arn:aws:s3:::${BucketName}"
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/AWSLogs/*"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Sid: AdminRead
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/Admin"
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+          - Sid: CrossAccountListBucket
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}"
+            Condition:
+              StringEquals:
+                "aws:PrincipalOrgID":
+                  - !Ref OrgID
+              StringLikeIfExists:
+                "s3:prefix": !Sub "AWSLogs/${OrgID}/${!aws:PrincipalAccount}/*"
+              ArnLike:
+                "aws:PrincipalArn":
+                  - arn:aws:iam::*:role/Admin
+                  - arn:aws:iam::*:role/AccessAnalyzerMonitorServiceRole
+          - Sid: CrossAccountGetObject
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/AWSLogs/${OrgID}/${!aws:PrincipalAccount}/*"
+            Condition:
+              StringEquals:
+                "aws:PrincipalOrgID":
+                  - !Ref OrgID
+              ArnLike:
+                "aws:PrincipalArn":
+                  - arn:aws:iam::*:role/Admin
+                  - arn:aws:iam::*:role/AccessAnalyzerMonitorServiceRole
+  OrganizationGlueDatabase:
     Type: AWS::Glue::Database
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: account
-        Description: Database to hold tables for every account
-
+        Name: organization
+        Description: Database to hold tables for the organization
   CloudTrailAthenaTable:
     Type: AWS::Glue::Table
-    DependsOn: AccountBaselineGlueDatabase
+    DependsOn: OrganizationGlueDatabase
     Properties:
       CatalogId: !Ref AWS::AccountId
-      DatabaseName: !Ref AccountBaselineGlueDatabase
+      DatabaseName: !Ref OrganizationGlueDatabase
       TableInput:
         Name: cloudtrail
         Description: Searches the Organization CloudTrail
         TableType: EXTERNAL_TABLE
         PartitionKeys:
+          - Name: account
+            Type: string
           - Name: region
             Type: string
           - Name: date_partition
@@ -115,14 +132,23 @@ Resources:
           "projection.date_partition.interval.unit": DAYS
           "projection.region.type": enum
           "projection.region.values": af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-northeast-3,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2
-          "storage.location.template": !Sub "s3://${CloudTrailBucket}/AWSLogs/${OrgID}/${AWS::AccountId}/CloudTrail/${!region}/${!date_partition}/"
+          "projection.account.type": injected
+          "storage.location.template": !Sub "s3://${BucketName}/AWSLogs/${OrgID}/${!account}/CloudTrail/${!region}/${!date_partition}/"
         Retention: 0
         StorageDescriptor:
-          Location: !Sub "s3://${CloudTrailBucket}/AWSLogs/${OrgID}/${AWS::AccountId}/"
+          Location: !Sub "s3://${BucketName}/AWSLogs/${OrgID}/"
           InputFormat: com.amazon.emr.cloudtrail.CloudTrailInputFormat
           SerdeInfo:
             SerializationLibrary: com.amazon.emr.hive.serde.CloudTrailSerde
           OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          # Note, there are some fields that are not yet supported by CloudTrailSerde:
+          # useridentity.sessionContext.webIdFederationData (string)
+          # managementevent (boolean)
+          # eventcategory (string)
+          # addendum (string)
+          # sessioncredentialfromconsole (string)
+          # edgedevicedetails (string)
+          # tlsdetails (string)
           Columns:
             - Name: eventversion
               Type: string

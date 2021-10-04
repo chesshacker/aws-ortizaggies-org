@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Organization CloudTrail
+Parameters:
+  CloudTrailBucket:
+    Description: The name of the bucket to store CloudTrail
+    Type: String
+    Default: ortizaggies-org-cloudtrail
+  NamePrefix:
+    Description: Used to name resources
+    Type: String
+    Default: ortizaggies-org
+Resources:
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    DeletionPolicy: Retain
+    Properties:
+      TrailName: !Sub "${NamePrefix}-cloudtrail"
+      IsLogging: true
+      S3BucketName: !Ref CloudTrailBucket
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: true
+      IsOrganizationTrail: true
+      # CloudWatchLogsLogGroupArn: String
+      # CloudWatchLogsRoleArn: String
+      # EventSelectors: by default includes all read and write management events
+      # InsightSelectors: could add ApiCallRateInsight
+      # KMSKeyId: bucket uses SSE-S3

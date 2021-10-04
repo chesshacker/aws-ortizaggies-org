@@ -23,6 +23,28 @@ Statement:
     Condition:
       StringNotLike:
         aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
+  - Sid: DenyChangesToAccountBaselineBuckets
+    Effect: Deny
+    NotAction:
+      - iam:Get*
+      - iam:List*
+    Resource:
+      - arn:aws:s3:::utility-bucket-${AWS::Region}-${AWS::AccountId}
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
+  - Sid: DenyChangesToAccountBaselineGlue
+    Effect: Deny
+    NotAction:
+      - glue:Get*
+      - glue:BatchGetPartition
+      - glue:SearchTables
+    Resource:
+      - arn:aws:glue:*:*:database/account
+      - arn:aws:glue:*:*:table/account/*
+    Condition:
+      StringNotLike:
+        aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
   - Sid: DenyChangesToAccountBaselineRoles
     Effect: Deny
     NotAction:
