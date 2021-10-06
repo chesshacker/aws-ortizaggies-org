@@ -9,6 +9,10 @@ Parameters:
     Description: Organization ID
     Type: String
     Default: o-jubqj38nma
+  MasterAccountID:
+    Description: Master Account ID
+    Type: String
+    Default: "423344064466"
 Resources:
   CloudTrailBucket:
     Type: AWS::S3::Bucket
@@ -54,7 +58,9 @@ Resources:
               Service:
                 - cloudtrail.amazonaws.com
             Action: s3:PutObject
-            Resource: !Sub "arn:aws:s3:::${BucketName}/AWSLogs/*"
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}/AWSLogs/${MasterAccountID}/*"
+              - !Sub "arn:aws:s3:::${BucketName}/AWSLogs/${OrgID}/*"
             Condition:
               StringEquals:
                 s3:x-amz-acl: bucket-owner-full-control
