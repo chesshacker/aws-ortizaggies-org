@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Simple Email Service
+Parameters:
+  DomainName:
+    Description: Domain name
+    Type: String
+    Default: scouts226.com
+  MailFrom:
+    Description: Custom MAIL FROM Domain Name
+    Type: String
+    Default: amazonses
+Resources:
+  Route53RecordSetGroup:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      Comment: !Sub "DNS Records for SES Identity ${DomainName}"
+      HostedZoneName: !Sub "${DomainName}."
+      RecordSets:
+        # To receive email
+        - Name: !Sub "${DomainName}"
+          Type: MX
+          TTL: "300"
+          ResourceRecords:
+            - !Sub "10 inbound-smtp.${AWS::Region}.amazonaws.com"
+        # The next MX and TXT record are for the custom MAIL FROM Domain
+        # SPF http://www.open-spf.org/SPF_Record_Syntax/
+        - Name: !Sub "${MailFrom}.${DomainName}"
+          Type: MX
+          TTL: "300"
+          ResourceRecords:
+            - !Sub "10 feedback-smtp.${AWS::Region}.amazonses.com"
+        - Name: !Sub "${MailFrom}.${DomainName}"
+          Type: TXT
+          TTL: "300"
+          ResourceRecords:
+            - "\"v=spf1 include:amazonses.com ~all\""
+        # The following CNAMEs are for DKIM and come from your SES identity in the console
+        - Name: 6s6gjigsz474jj6iuqtpi7vljqarxpbk._domainkey.scouts226.com
+          Type: CNAME
+          TTL: "300"
+          ResourceRecords:
+            - "6s6gjigsz474jj6iuqtpi7vljqarxpbk.dkim.amazonses.com"
+        - Name: 355baxexxvhkhh73qvxatcac4gwwiy3m._domainkey.scouts226.com
+          Type: CNAME
+          TTL: "300"
+          ResourceRecords:
+            - "355baxexxvhkhh73qvxatcac4gwwiy3m.dkim.amazonses.com"
+        - Name: n222hmflgz4dywnm2rf3gfe5dbn2rkc3._domainkey.scouts226.com
+          Type: CNAME
+          TTL: "300"
+          ResourceRecords:
+            - "n222hmflgz4dywnm2rf3gfe5dbn2rkc3.dkim.amazonses.com"
+        # DMARC https://dmarc.org/overview/
+        - Name: !Sub "_dmarc.${DomainName}"
+          Type: TXT
+          TTL: "300"
+          ResourceRecords:
+            - !Sub "\"v=DMARC1;p=none;pct=100;rua=mailto:postmaster@${DomainName}\""
+            # TODO -- change none to quarantine then reject

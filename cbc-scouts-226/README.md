@@ -30,3 +30,19 @@ aws cloudformation create-stack \
 After creating the website-code-pipeline stack, finish setting up the [Pending Connection].
 
 [Pending Connection]: https://console.aws.amazon.com/codesuite/settings/connections
+
+## One-time set up for SES Identity
+
+Since there isn't currently an SES CloudFormation resource for SES Identities,
+this was configured through the console.
+
+Domain: scouts226.com
+Custom Mail From Domain: amazonses.scouts226.com
+Behavior on MX failure: Reject
+Advanced DKIM: Easy DKIM / RSA_2048_BIT / Enabled
+
+## One-time set up for WorkMail
+
+Name: scouts226
+Domain: scouts226.com
+Directory: New WorkMail Directory

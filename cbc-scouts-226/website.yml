@@ -92,7 +92,7 @@ Resources:
         # Restrictions: Restrictions -- no georestrictions currently
         ViewerCertificate:
           AcmCertificateArn: !Ref Certificate
-          MinimumProtocolVersion: TLSv1.2_2018
+          MinimumProtocolVersion: TLSv1.2_2021
           SslSupportMethod: sni-only
         # WebACLId: String -- no WAF just yet
 

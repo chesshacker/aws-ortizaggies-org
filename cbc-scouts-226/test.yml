@@ -1,0 +1,12 @@
+people:
+  - name: alex
+    age: 12
+    likeable: false
+  - name: papa
+    age: 35
+  - name: lulu
+    age: 15
+snacks:
+  - ice cream
+  - cake
+  - apples
