@@ -29,3 +29,11 @@ Resources:
             - chesshacker.netlify.com.
           TTL: "300"
           Type: CNAME
+        - Name: sandbox.chesshacker.com.
+          ResourceRecords:
+            - ns-1489.awsdns-58.org.
+            - ns-61.awsdns-07.com.
+            - ns-591.awsdns-09.net.
+            - ns-1586.awsdns-06.co.uk.
+          TTL: "300"
+          Type: NS
