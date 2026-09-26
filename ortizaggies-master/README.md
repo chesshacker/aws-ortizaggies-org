@@ -7,7 +7,7 @@ Only billing and organization things should go in the master payer account.
 To create the account-baseline stackset.
 
 ```
-aws --profile ortizaggies-master-admin cloudformation create-stack-set \
+aws --profile ortizaggies-master cloudformation create-stack-set \
   --stack-set-name account-baseline \
   --template-body file://account-baseline.yml \
   --capabilities CAPABILITY_NAMED_IAM \
@@ -16,8 +16,8 @@ aws --profile ortizaggies-master-admin cloudformation create-stack-set \
 ```
 
 ```
-ROOT_ID=$(aws --profile ortizaggies-master-admin organizations list-roots | jq -r '.Roots[0].Id')
-aws --profile ortizaggies-master-admin cloudformation create-stack-instances \
+ROOT_ID=$(aws --profile ortizaggies-master organizations list-roots | jq -r '.Roots[0].Id')
+aws --profile ortizaggies-master cloudformation create-stack-instances \
   --stack-set-name account-baseline \
   --deployment-targets OrganizationalUnitIds=${ROOT_ID} \
   --regions=us-east-1 \
@@ -27,7 +27,7 @@ aws --profile ortizaggies-master-admin cloudformation create-stack-instances \
 To update the account-baseline stackset.
 
 ```
-aws --profile ortizaggies-master-admin cloudformation update-stack-set \
+aws --profile ortizaggies-master cloudformation update-stack-set \
   --stack-set-name account-baseline \
   --template-body file://account-baseline.yml \
   --capabilities CAPABILITY_NAMED_IAM \
@@ -37,12 +37,12 @@ aws --profile ortizaggies-master-admin cloudformation update-stack-set \
 To add the account baseline to the master account...
 
 ```
-aws --profile ortizaggies-master-admin cloudformation create-stack \
+aws --profile ortizaggies-master cloudformation create-stack \
   --stack-name account-baseline \
   --template-body file://account-baseline.yml \
   --capabilities CAPABILITY_NAMED_IAM
 
-aws --profile ortizaggies-master-admin cloudformation update-stack \
+aws --profile ortizaggies-master cloudformation update-stack \
   --stack-name account-baseline \
   --template-body file://account-baseline.yml \
   --capabilities CAPABILITY_NAMED_IAM
@@ -51,7 +51,7 @@ aws --profile ortizaggies-master-admin cloudformation update-stack \
 ## Account Baseline SCP
 
 ```
-aws --profile ortizaggies-master-admin organizations create-policy \
+aws --profile ortizaggies-master organizations create-policy \
   --type SERVICE_CONTROL_POLICY \
   --name account-baseline-scp \
   --description "protects account baseline" \
@@ -59,10 +59,10 @@ aws --profile ortizaggies-master-admin organizations create-policy \
 ```
 
 ```
-POLICY_ID=$(aws --profile ortizaggies-master-admin organizations list-policies \
+POLICY_ID=$(aws --profile ortizaggies-master organizations list-policies \
   --filter SERVICE_CONTROL_POLICY | jq -r \
   '.Policies[]|select(.Name=="account-baseline-scp")|.Id')
-aws --profile ortizaggies-master-admin organizations update-policy \
+aws --profile ortizaggies-master organizations update-policy \
   --policy-id "${POLICY_ID}" \
   --content "$(yq -c '.' account-baseline-scp.yml)"
 ```
@@ -70,7 +70,7 @@ aws --profile ortizaggies-master-admin organizations update-policy \
 ## Disable Root SCP
 
 ```
-aws --profile ortizaggies-master-admin organizations create-policy \
+aws --profile ortizaggies-master organizations create-policy \
   --type SERVICE_CONTROL_POLICY \
   --name disable-root-scp \
   --description "prevents root user from doing anything" \
@@ -78,10 +78,10 @@ aws --profile ortizaggies-master-admin organizations create-policy \
 ```
 
 ```
-POLICY_ID=$(aws --profile ortizaggies-master-admin organizations list-policies \
+POLICY_ID=$(aws --profile ortizaggies-master organizations list-policies \
   --filter SERVICE_CONTROL_POLICY | jq -r \
   '.Policies[]|select(.Name=="disable-root-scp")|.Id')
-aws --profile ortizaggies-master-admin organizations update-policy \
+aws --profile ortizaggies-master organizations update-policy \
   --policy-id "${POLICY_ID}"
   --content "$(yq -c '.' disable-root-scp.yml)" \
 ```
