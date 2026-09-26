@@ -83,6 +83,21 @@ Resources:
             Status: Enabled
             ExpirationInDays: 7
 
+  AccountAthenaWorkGroup:
+    Type: AWS::Athena::WorkGroup
+    DependsOn: UtilityBucket
+    Properties:
+      Name: account
+      Description: Account queries, with results in the utility bucket
+      State: ENABLED
+      WorkGroupConfiguration:
+        EnforceWorkGroupConfiguration: false
+        PublishCloudWatchMetricsEnabled: false
+        ResultConfiguration:
+          OutputLocation: !Sub "s3://utility-bucket-${AWS::Region}-${AWS::AccountId}/"
+          EncryptionConfiguration:
+            EncryptionOption: SSE_S3
+
   AccountBaselineGlueDatabase:
     Type: AWS::Glue::Database
     Properties:

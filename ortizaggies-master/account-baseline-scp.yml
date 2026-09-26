@@ -26,10 +26,22 @@ Statement:
   - Sid: DenyChangesToAccountBaselineBuckets
     Effect: Deny
     NotAction:
-      - iam:Get*
-      - iam:List*
+      - s3:ListBucket
+      - s3:GetBucketLocation
+      - s3:GetEncryptionConfiguration
+      - s3:GetLifecycleConfiguration
+      - s3:ListBucketMultipartUploads
+      - s3:GetObject
+      - s3:PutObject
+      - s3:DeleteObject
+      - s3:AbortMultipartUpload
+      - s3:ListMultipartUploadParts
     Resource:
-      - arn:aws:s3:::utility-bucket-${AWS::Region}-${AWS::AccountId}
+      # The * in the bucket ARN also matches object keys, so object actions
+      # have to be exempted here too. A separate object statement cannot
+      # override this deny.
+      - arn:aws:s3:::utility-bucket-*
+      - arn:aws:s3:::utility-bucket-*/*
     Condition:
       StringNotLike:
         aws:PrincipalARN: arn:aws:iam::*:role/stacksets-exec-1b15d4d67378d632651f6303848f4e32
