@@ -48,6 +48,18 @@ aws --profile ortizaggies-master cloudformation update-stack \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
+## yq
+
+The policy commands below need the YAML as one line of JSON. Two unrelated programs are both named `yq`.
+
+`brew install yq` installs the Go program from mikefarah. That is the `yq` on the PATH after a Homebrew install. `yq -c` prints compact YAML, which Organizations rejects. Compact JSON is:
+
+```
+yq -o=json -I=0 '.' account-baseline-scp.yml
+```
+
+The other program is the Python package (`pip install yq`), a wrapper around jq. It is not installed. There, compact JSON is `yq -c '.' file.yml`.
+
 ## Account Baseline SCP
 
 ```
@@ -55,7 +67,7 @@ aws --profile ortizaggies-master organizations create-policy \
   --type SERVICE_CONTROL_POLICY \
   --name account-baseline-scp \
   --description "protects account baseline" \
-  --content "$(yq -c '.' account-baseline-scp.yml)"
+  --content "$(yq -o=json -I=0 '.' account-baseline-scp.yml)"
 ```
 
 ```
@@ -64,7 +76,7 @@ POLICY_ID=$(aws --profile ortizaggies-master organizations list-policies \
   '.Policies[]|select(.Name=="account-baseline-scp")|.Id')
 aws --profile ortizaggies-master organizations update-policy \
   --policy-id "${POLICY_ID}" \
-  --content "$(yq -c '.' account-baseline-scp.yml)"
+  --content "$(yq -o=json -I=0 '.' account-baseline-scp.yml)"
 ```
 
 ## Disable Root SCP
@@ -74,7 +86,7 @@ aws --profile ortizaggies-master organizations create-policy \
   --type SERVICE_CONTROL_POLICY \
   --name disable-root-scp \
   --description "prevents root user from doing anything" \
-  --content "$(yq -c '.' disable-root-scp.yml)"
+  --content "$(yq -o=json -I=0 '.' disable-root-scp.yml)"
 ```
 
 ```
@@ -83,5 +95,5 @@ POLICY_ID=$(aws --profile ortizaggies-master organizations list-policies \
   '.Policies[]|select(.Name=="disable-root-scp")|.Id')
 aws --profile ortizaggies-master organizations update-policy \
   --policy-id "${POLICY_ID}"
-  --content "$(yq -c '.' disable-root-scp.yml)" \
+  --content "$(yq -o=json -I=0 '.' disable-root-scp.yml)" \
 ```
